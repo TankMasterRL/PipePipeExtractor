@@ -112,6 +112,17 @@ NewPipe Extractor and keeps the upstream package namespace
   `fix: preserve SABR demand backoff deadlines`, `feat: attach session-bound PoTokens to
   YouTube player requests`. This differs from upstream NewPipe's `[Service] Subject`
   bracket convention — match what's actually in `git log`, not the upstream style.
+- **Credit AI assistance with an `Assisted-by: <tool>` trailer** (e.g.
+  `Assisted-by: Claude Code`) on commits an AI tool helped author, mirroring upstream
+  NewPipe's convention for AI-assisted contributions.
+- **Don't put agent-session links** (e.g. `https://claude.ai/code/...`) in commit
+  messages or PR descriptions.
 - Keep changes focused and match existing patterns; reuse existing utilities before
   adding new ones.
-- Don't open a PR unless asked to.
+- Don't open a PR unless asked to; once one is open, subscribe to its activity
+  (comments, CI, reviews) and drive it toward a mergeable state rather than waiting to
+  be asked.
+- Where these conventions conflict with a specific agent harness's own required
+  behavior for a session (e.g. a mandated commit trailer, or asking before subscribing
+  to a PR), that harness's behavior takes precedence — these are this repo's general
+  preferences for agents, not an override of session-level requirements.
