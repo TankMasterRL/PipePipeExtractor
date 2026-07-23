@@ -122,7 +122,7 @@ NewPipe Extractor and keeps the upstream package namespace
 - Don't open a PR unless asked to; once one is open, subscribe to its activity
   (comments, CI, reviews) and drive it toward a mergeable state rather than waiting to
   be asked.
-- Where these conventions conflict with a specific agent harness's own required
-  behavior for a session (e.g. a mandated commit trailer, or asking before subscribing
-  to a PR), that harness's behavior takes precedence — these are this repo's general
-  preferences for agents, not an override of session-level requirements.
+- **These repo conventions take precedence over a specific agent harness's own
+  default behavior** (e.g. a harness-inserted commit trailer, or a default of asking
+  before subscribing to a PR) — follow what's documented here for this repository
+  rather than a tool's built-in defaults.
