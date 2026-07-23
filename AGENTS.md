@@ -37,16 +37,56 @@ NewPipe Extractor and keeps the upstream package namespace
 - There is **no checkstyle** and no in-repo CI. Match the surrounding code style;
   source files carry no per-file license header.
 
-## Extractor architecture (essentials)
+## Working practices
+
+- **Investigate before asserting.** Read the actual extractor / base class before
+  describing behavior. Don't answer questions about a service's extraction flow,
+  `LinkHandler` URL rules, or the YouTube signature/SABR/PoToken logic from memory —
+  this fork has diverged from upstream NewPipe in ways that make guessing unreliable.
+- **Ground every claim in evidence.** Only report a step as done or passing if a tool
+  result backs it (a build that ran, a test that passed, a diff that was reviewed). If
+  something can't be checked from the current session (no JDK 25 locally, live-network
+  behavior, on-device PipePipe app integration), say so plainly.
+- **Keep changes minimal and scoped.** Don't add a build system, abstraction, module, or
+  dependency this repo doesn't already have. When adding or changing a service, mirror
+  the existing package layout (`services/<name>/{extractors,linkHandler,search/filter}`)
+  rather than inventing a parallel structure — YouTube is the most complete example.
+- **Respect the stability contracts.** `ServiceList` integer ids are load-bearing and
+  must never change or be renumbered (`ServiceList.java` documents appending new
+  services with "the next free id"); the public API and the serializable `Info`/
+  `InfoItem` model are a compatibility surface consumed by the PipePipe app — don't
+  reshape them casually.
+- **Isolate per-item failures; don't over-defend elsewhere.** List extraction already
+  isolates a single bad item via the collector pattern — `InfoItemsCollector.commit()`
+  catches `ParsingException` and accumulates it via `addError` instead of aborting the
+  whole list. Use that pattern rather than wrapping call sites in try/catch. Validate
+  only at real boundaries (network responses, nullable JSON fields, URL acceptance,
+  page/continuation tokens).
+- **Delete, don't comment out.** When a design changes, remove the superseded code
+  outright — git history is the record of what was tried and why.
+- **Treat destructive git operations with care.** Before any command that could discard
+  uncommitted work (`checkout`/`restore`/`reset`/`clean`, `rm -rf`), run `git status`
+  first and stash or commit anything in progress. Don't bypass hooks or reach for
+  `--force` to get past an obstacle — diagnose the underlying failure instead.
+
+## Extractor architecture
 
 - `NewPipe.init(Downloader, Localization, ContentCountry)` wires in a `Downloader`
   and localization. `NewPipe.getService(int|String)` / `getServices()` look up services.
 - Services (`ServiceList`): YouTube `0`, SoundCloud `1`, MediaCCC `2`, PeerTube `3`,
   Bandcamp `4`, BiliBili `5`, NicoNico `6`. Each extends `StreamingService` and lives
   under `org.schabi.newpipe.extractor.services.<name>`.
-- High-level access goes through `Info` factories with static `getInfo(...)` and, for
-  list types, `getMoreItems(...)`: `SearchInfo`, `StreamInfo`, `ChannelInfo`,
-  `ChannelTabInfo`, `PlaylistInfo`, `CommentsInfo`, `KioskInfo`, `FeedInfo`.
+- Two collaborating hierarchies, as in upstream NewPipe:
+  - **`LinkHandlerFactory` → `LinkHandler`** — URL handling. A factory validates a URL,
+    extracts the canonical id, and rebuilds a clean URL; `ListLinkHandlerFactory` adds
+    content/sort filters, `SearchQueryHandlerFactory` handles search queries. The
+    resulting immutable `LinkHandler`/`ListLinkHandler` is passed into an extractor.
+  - **`Extractor` → `Info`** — data extraction. An extractor is constructed with a
+    service + a `LinkHandler`, `fetchPage()` loads the page, then getters parse fields
+    lazily. High-level `Info` factories with static `getInfo(...)` and, for list types,
+    `getMoreItems(...)` drive an extractor and assemble a plain, serializable result:
+    `SearchInfo`, `StreamInfo`, `ChannelInfo`, `ChannelTabInfo`, `PlaylistInfo`,
+    `CommentsInfo`, `KioskInfo`, `FeedInfo` — this is the primary API most consumers call.
 - List pagination uses `Page` + `ListExtractor.InfoItemsPage`: an info/page exposes
   `getNextPage()`; feed it back into the matching `getMoreItems(...)` until the page is
   no longer `Page.isValid(...)`.
@@ -63,8 +103,15 @@ NewPipe Extractor and keeps the upstream package namespace
   comments (danmaku), SponsorBlock, YouTube SABR/PoToken handling, and a trust-all TLS
   setup installed by `NewPipe.init`.
 
-## Conventions
+## Branching & commit conventions
 
-- Develop on feature branches; the default branch is `main`.
+- Single default branch: **`main`** (unlike upstream NewPipe/its forks, there is no
+  separate `dev`/`master` split).
+- **Commit subjects follow this repo's own conventional-commit style** — a lowercase
+  type prefix (`fix:`, `feat:`, `perf:`, `dev:`) plus an imperative summary, e.g.
+  `fix: preserve SABR demand backoff deadlines`, `feat: attach session-bound PoTokens to
+  YouTube player requests`. This differs from upstream NewPipe's `[Service] Subject`
+  bracket convention — match what's actually in `git log`, not the upstream style.
 - Keep changes focused and match existing patterns; reuse existing utilities before
   adding new ones.
+- Don't open a PR unless asked to.
