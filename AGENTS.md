@@ -13,24 +13,12 @@ NewPipe Extractor and keeps the upstream package namespace
 
 ## Build & modules
 
-- **Gradle**, Groovy DSL (`build.gradle`, `settings.gradle`) — no Kotlin DSL, no
-  version catalog. Dependency versions are declared inline in each module.
-- **Java 25 toolchain** for all projects (see the root `build.gradle`). The Gradle
-  wrapper pins Gradle 9.5.1.
-- Modules (`settings.gradle`):
-  - `:extractor` — the main library. Uses the Square **Wire** plugin to generate
-    Java from the `.proto` files in `extractor/src/main/proto`.
-  - `:timeago-parser` — helper for parsing relative "time ago" dates.
-  - `:mcp-server` — an MCP server exposing the extractor's public API (Java
-    `application`; depends only on `:extractor`). See the README.
 - The root build **disables the `test` and `check` tasks for all projects**, then
   `:extractor` and `:mcp-server` re-enable their own `test` task. So there is no
   aggregate `check`; run module tasks directly.
 
 ## Tests
 
-- `./gradlew :extractor:test` — the extractor's JUnit 5 unit tests.
-- `./gradlew :mcp-server:test` — the MCP server's unit tests.
 - Tests are **offline unit tests**. Unlike upstream NewPipe, there is **no**
   `DownloaderFactory` / mock-response harness and **no** `-Ddownloader`
   MOCK/REAL/REC mechanism; do not assume one exists. Prefer tests that need no network.
@@ -71,34 +59,6 @@ NewPipe Extractor and keeps the upstream package namespace
 
 ## Extractor architecture
 
-- `NewPipe.init(Downloader, Localization, ContentCountry)` wires in a `Downloader`
-  and localization. `NewPipe.getService(int|String)` / `getServices()` look up services.
-- Services (`ServiceList`): YouTube `0`, SoundCloud `1`, MediaCCC `2`, PeerTube `3`,
-  Bandcamp `4`, BiliBili `5`, NicoNico `6`. Each extends `StreamingService` and lives
-  under `org.schabi.newpipe.extractor.services.<name>`.
-- Two collaborating hierarchies, as in upstream NewPipe:
-  - **`LinkHandlerFactory` → `LinkHandler`** — URL handling. A factory validates a URL,
-    extracts the canonical id, and rebuilds a clean URL; `ListLinkHandlerFactory` adds
-    content/sort filters, `SearchQueryHandlerFactory` handles search queries. The
-    resulting immutable `LinkHandler`/`ListLinkHandler` is passed into an extractor.
-  - **`Extractor` → `Info`** — data extraction. An extractor is constructed with a
-    service + a `LinkHandler`, `fetchPage()` loads the page, then getters parse fields
-    lazily. High-level `Info` factories with static `getInfo(...)` and, for list types,
-    `getMoreItems(...)` drive an extractor and assemble a plain, serializable result:
-    `SearchInfo`, `StreamInfo`, `ChannelInfo`, `ChannelTabInfo`, `PlaylistInfo`,
-    `CommentsInfo`, `KioskInfo`, `FeedInfo` — this is the primary API most consumers call.
-- List pagination uses `Page` + `ListExtractor.InfoItemsPage`: an info/page exposes
-  `getNextPage()`; feed it back into the matching `getMoreItems(...)` until the page is
-  no longer `Page.isValid(...)`.
-- Search filters use the `search.filter` model: content/sort filters are
-  `List<FilterItem>` (each `FilterItem` has an int identifier and a name); a service's
-  `SearchQueryHandlerFactory` exposes `getAvailableContentFilter()` /
-  `getAvailableSortFilter()` (returning a `Filter` of `FilterGroup[]`) and
-  `getFilterItem(int)`.
-- The `Downloader` contract is okhttp-flavored: implementations must provide both
-  `execute(Request)` and `executeAsync(Request, AsyncCallback)` (the async form returns
-  a `CancellableCall` wrapping an `okhttp3.Call`). YouTube stream extraction drives
-  several async calls concurrently and awaits/cancels them.
 - PipePipe-specific extensions to be aware of: BiliBili & NicoNico services, bullet
   comments (danmaku), SponsorBlock, YouTube SABR/PoToken handling, and a trust-all TLS
   setup installed by `NewPipe.init`.
