@@ -30,3 +30,11 @@ Tools exposed: `list_services`, `get_suggestions`, `search`, `get_stream`,
 `get_feed`, and `get_more` (for paginating any result via its `nextPageToken`).
 Numeric service ids and the available search content/sort filter ids come from
 `list_services`.
+
+## n8n node
+
+`n8n-node/` is an [n8n](https://n8n.io) community node package
+(`n8n-nodes-pipepipe`) that drives the MCP server above over its Streamable HTTP
+transport, exposing search and stream/channel/playlist/comment/kiosk extraction as
+n8n operations with dropdowns and pagination. It is a standalone npm package and is
+not part of the Gradle build; see [`n8n-node/README.md`](n8n-node/README.md).

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="PipePipe">
+  <rect width="64" height="64" rx="14" fill="#e53935"/>
+  <path d="M14 18.5c0-2.1 2.3-3.4 4.1-2.3l19 11.4a2.7 2.7 0 0 1 0 4.6l-19 11.4A2.7 2.7 0 0 1 14 41.3z" fill="#fff"/>
+  <path d="M36 18.5c0-2.1 2.3-3.4 4.1-2.3l19 11.4a2.7 2.7 0 0 1 0 4.6l-19 11.4A2.7 2.7 0 0 1 36 41.3z" fill="#fff" opacity=".55"/>
+</svg>
