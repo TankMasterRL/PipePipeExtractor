@@ -16,6 +16,10 @@ NewPipe Extractor and keeps the upstream package namespace
 - The root build **disables the `test` and `check` tasks for all projects**, then
   `:extractor` and `:mcp-server` re-enable their own `test` task. So there is no
   aggregate `check`; run module tasks directly.
+- `n8n-node/` is **not** a Gradle module and is absent from `settings.gradle`: it is a
+  standalone npm/TypeScript package (the `n8n-nodes-pipepipe` community node) that
+  talks to `:mcp-server` over MCP Streamable HTTP. Build and test it with npm from
+  that directory; it has no runtime npm dependencies, so keep it that way.
 
 ## Tests
 

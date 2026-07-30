@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.pipePipe",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Data & Storage"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://github.com/TankMasterRL/PipePipeExtractor/tree/main/n8n-node"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/TankMasterRL/PipePipeExtractor/tree/main/n8n-node"
+			}
+		]
+	}
+}

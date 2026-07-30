@@ -1,0 +1,51 @@
+{
+  "name": "n8n-nodes-pipepipe",
+  "version": "0.1.0",
+  "description": "n8n community node for PipePipe Extractor: search services and fetch stream, channel, playlist, comment and kiosk data through the PipePipe Extractor MCP server.",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "pipepipe",
+    "newpipe",
+    "extractor",
+    "mcp"
+  ],
+  "license": "GPL-3.0",
+  "homepage": "https://github.com/TankMasterRL/PipePipeExtractor",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TankMasterRL/PipePipeExtractor.git",
+    "directory": "n8n-node"
+  },
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.15"
+  },
+  "files": [
+    "dist/credentials",
+    "dist/nodes",
+    "index.js"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc && node scripts/copy-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test \"dist/test/**/*.test.js\""
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/PipePipeExtractorApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/PipePipe/PipePipe.node.js"
+    ]
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "n8n-workflow": "*",
+    "typescript": "^5.7.2"
+  }
+}
