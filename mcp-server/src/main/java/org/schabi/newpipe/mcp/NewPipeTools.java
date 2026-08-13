@@ -20,6 +20,8 @@ import org.schabi.newpipe.extractor.linkhandler.SearchQueryHandler;
 import org.schabi.newpipe.extractor.linkhandler.SearchQueryHandlerFactory;
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo;
 import org.schabi.newpipe.extractor.search.SearchInfo;
+import org.schabi.newpipe.extractor.search.filter.Filter;
+import org.schabi.newpipe.extractor.search.filter.FilterGroup;
 import org.schabi.newpipe.extractor.search.filter.FilterItem;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
@@ -161,7 +163,7 @@ final class NewPipeTools {
         final StreamingService service = NewPipe.getService(reqInt(arguments, "serviceId"));
         final SearchQueryHandlerFactory factory = service.getSearchQHFactory();
         final List<FilterItem> contentFilters =
-                resolveFilterIds(factory, asIntList(arguments.get("contentFilters")));
+                contentFiltersOrDefault(factory, asIntList(arguments.get("contentFilters")));
         final List<FilterItem> sortFilters =
                 resolveFilterIds(factory, asIntList(arguments.get("sortFilters")));
         final SearchQueryHandler handler = factory.fromQuery(reqStr(arguments, "query"),
@@ -229,7 +231,8 @@ final class NewPipeTools {
             final List<Integer> contentFilterIds = asIntList(cont.get("contentFilterIds"));
             final List<Integer> sortFilterIds = asIntList(cont.get("sortFilterIds"));
             final SearchQueryHandlerFactory factory = service.getSearchQHFactory();
-            final List<FilterItem> contentFilters = resolveFilterIds(factory, contentFilterIds);
+            final List<FilterItem> contentFilters =
+                    contentFiltersOrDefault(factory, contentFilterIds);
             final List<FilterItem> sortFilters = resolveFilterIds(factory, sortFilterIds);
             final SearchQueryHandler handler = factory.fromQuery(query, contentFilters,
                     sortFilters.isEmpty() ? null : sortFilters);
@@ -270,6 +273,58 @@ final class NewPipeTools {
             throw new IllegalArgumentException("Unknown or non-paginable page token");
         }
         return serializer.itemsPage(result, nextToken);
+    }
+
+    /**
+     * Resolves the caller's content filter ids, falling back to the service's default content
+     * filter when none of them resolve.
+     *
+     * <p>{@code contentFilters} is documented as optional, but for three of the seven services it
+     * is not, and each fails differently: YouTube throws
+     * {@code RuntimeException("we have a problem here")} out of
+     * {@code YoutubeFilters.evaluateSelectedFilters}, NicoNico reads element 0 of the list
+     * unguarded, and BiliBili builds a {@code search/type} URL with no {@code search_type}
+     * parameter. Passing the default is also what a UI does: a search screen always has one
+     * content filter selected, which is what {@code SearchFiltersBase.defaultContentFilterId} is
+     * for.
+     *
+     * <p>The remaining four are unaffected: MediaCCC ignores content filters entirely, and
+     * SoundCloud, Bandcamp and PeerTube all default to an "all" item that contributes nothing to
+     * the query.
+     */
+    static List<FilterItem> contentFiltersOrDefault(
+            final SearchQueryHandlerFactory factory, final List<Integer> ids) {
+        final List<FilterItem> resolved = resolveFilterIds(factory, ids);
+        if (!resolved.isEmpty()) {
+            return resolved;
+        }
+        final FilterItem fallback = defaultContentFilter(factory);
+        return fallback == null ? resolved : List.of(fallback);
+    }
+
+    /**
+     * The content filter a service treats as its default, or null for a service that offers none.
+     *
+     * <p>{@code defaultContentFilterId} is protected in {@code SearchFiltersBase} with no
+     * accessor, so it is read through the public filter list instead: every service registers its
+     * default as the first item of the first group it adds, which is the item a UI would start on.
+     */
+    private static FilterItem defaultContentFilter(final SearchQueryHandlerFactory factory) {
+        final Filter available = factory.getAvailableContentFilter();
+        if (available == null || available.getFilterGroups() == null) {
+            return null;
+        }
+        for (final FilterGroup group : available.getFilterGroups()) {
+            if (group == null || group.filterItems == null) {
+                continue;
+            }
+            for (final FilterItem item : group.filterItems) {
+                if (item != null) {
+                    return item;
+                }
+            }
+        }
+        return null;
     }
 
     private static List<FilterItem> resolveFilterIds(final SearchQueryHandlerFactory factory,
