@@ -19,13 +19,24 @@ import java.util.Map;
  * <p>A token is the URL-safe Base64 of a small JSON object describing how to fetch the next page
  * (the list {@code kind}, its identifying context, and the extractor's {@link Page}), so a client
  * only ever passes the token back verbatim without needing to understand it.</p>
+ *
+ * <p>The tokens a cursor writes also carry the {@link Localizations} its call was made with, so a
+ * continuation is fetched in the language of the page it continues. Without that, page 1 of a
+ * search would honour the caller's language and page 2 would silently fall back to the service's
+ * default — for YouTube, Zulu.</p>
  */
 final class Cursor {
 
     private final McpJsonMapper jsonMapper;
+    private final Localizations localization;
 
     Cursor(final McpJsonMapper mapper) {
+        this(mapper, Localizations.NONE);
+    }
+
+    Cursor(final McpJsonMapper mapper, final Localizations localization) {
         this.jsonMapper = mapper;
+        this.localization = localization;
     }
 
     String tabNavigation(final int serviceId, final ListLinkHandler handler) throws IOException {
@@ -86,9 +97,29 @@ final class Cursor {
                 body == null ? null : Base64.getDecoder().decode((String) body));
     }
 
+    /**
+     * The localization recorded in a decoded token, or {@link Localizations#NONE} for a token
+     * written before one was carried or by a call that expressed no preference.
+     */
+    static Localizations localizationFrom(final Map<String, Object> token) {
+        return Localizations.of(stringOrNull(token.get("language")),
+                stringOrNull(token.get("country")));
+    }
+
+    private static String stringOrNull(final Object value) {
+        return value == null ? null : value.toString();
+    }
+
     private String encode(final Map<String, Object> map) throws IOException {
+        final Map<String, Object> payload = new LinkedHashMap<>(map);
+        if (localization.language() != null) {
+            payload.put("language", localization.language());
+        }
+        if (localization.country() != null) {
+            payload.put("country", localization.country());
+        }
         return Base64.getUrlEncoder().withoutPadding().encodeToString(
-                jsonMapper.writeValueAsString(map).getBytes(StandardCharsets.UTF_8));
+                jsonMapper.writeValueAsString(payload).getBytes(StandardCharsets.UTF_8));
     }
 
     private static Map<String, Object> handlerMap(final ListLinkHandler handler) {

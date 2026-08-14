@@ -105,6 +105,83 @@ describe('PipePipe node', () => {
 		assert.deepEqual(output, [{ n: 1 }, { n: 2 }, { n: 3 }]);
 	});
 
+	it('sends the Language and Country options to the extractor', async () => {
+		server.tool('search', () => toolResult({ items: [{ name: 'one' }] }));
+
+		await run({
+			parameters: {
+				resource: 'search',
+				operation: 'search',
+				serviceId: 0,
+				query: 'lofi',
+				contentFilters: [],
+				sortFilters: [],
+				returnAll: true,
+				options: { language: ' en-GB ', country: 'SE' },
+			},
+		});
+
+		const args = argumentsOf('search');
+		// Trimmed, so a stray space in the UI field never becomes part of the code.
+		assert.equal(args.language, 'en-GB');
+		assert.equal(args.country, 'SE');
+	});
+
+	it('sends the Language option on URL-addressed operations too', async () => {
+		server.tool('get_stream', () => toolResult({ name: 'a stream' }));
+
+		await run({
+			parameters: {
+				resource: 'stream',
+				operation: 'get',
+				url: 'https://example.com/watch?v=1',
+				options: { language: 'en' },
+			},
+		});
+
+		assert.deepEqual(argumentsOf('get_stream'), {
+			language: 'en',
+			url: 'https://example.com/watch?v=1',
+		});
+	});
+
+	it('omits blank Language and Country rather than sending empty strings', async () => {
+		server.tool('get_stream', () => toolResult({ name: 'a stream' }));
+
+		await run({
+			parameters: {
+				resource: 'stream',
+				operation: 'get',
+				url: 'https://example.com/watch?v=1',
+				options: { language: '   ', country: '' },
+			},
+		});
+
+		// An untouched option must leave the server on its own default, not override it with "".
+		assert.deepEqual(argumentsOf('get_stream'), { url: 'https://example.com/watch?v=1' });
+	});
+
+	it('does not repeat the language on get_more, which the page token carries', async () => {
+		server
+			.tool('search', () => toolResult({ items: [{ n: 1 }], nextPageToken: 'p2' }))
+			.tool('get_more', () => toolResult({ items: [{ n: 2 }] }));
+
+		await run({
+			parameters: {
+				resource: 'search',
+				operation: 'search',
+				serviceId: 0,
+				query: 'lofi',
+				contentFilters: [],
+				sortFilters: [],
+				returnAll: true,
+				options: { language: 'en-GB' },
+			},
+		});
+
+		assert.deepEqual(argumentsOf('get_more'), { pageToken: 'p2' });
+	});
+
 	it('returns a stream as a single item', async () => {
 		server.tool('get_stream', () => toolResult({ name: 'a stream', duration: 42 }));
 

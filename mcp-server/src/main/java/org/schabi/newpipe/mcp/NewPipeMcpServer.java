@@ -13,8 +13,6 @@ import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.Server;
 import org.schabi.newpipe.extractor.NewPipe;
-import org.schabi.newpipe.extractor.localization.ContentCountry;
-import org.schabi.newpipe.extractor.localization.Localization;
 
 import java.time.Duration;
 import java.util.List;
@@ -30,7 +28,8 @@ import java.util.concurrent.CountDownLatch;
  * Jetty container.</p>
  *
  * <p>Usage: {@code [--transport stdio|http|sse] [--port PORT] [--language LANG]
- * [--country COUNTRY]}.</p>
+ * [--country COUNTRY]}. {@code --language}/{@code --country} set what every tool extracts in
+ * unless the call names a language of its own; see {@link Localizations}.</p>
  */
 public final class NewPipeMcpServer {
 
@@ -44,11 +43,15 @@ public final class NewPipeMcpServer {
 
     public static void main(final String[] args) throws Exception {
         final Options options = Options.parse(args);
-        NewPipe.init(new OkHttpDownloader(), options.localization, options.contentCountry);
+        NewPipe.init(new OkHttpDownloader(), options.requested.localizationOrDefault(),
+                options.requested.contentCountryOrDefault());
 
         final McpJsonMapper mapper = defaultJsonMapper();
+        // The same preference is handed to the tools, which force it per extractor. Setting it on
+        // NewPipe alone is not enough: a service may override getLocalization() and ignore the
+        // preference entirely, and YouTube does. Each tool call may still name its own language.
         final List<McpServerFeatures.SyncToolSpecification> tools =
-                new NewPipeTools(mapper).specifications();
+                new NewPipeTools(mapper, options.requested).specifications();
         final McpSchema.ServerCapabilities capabilities =
                 McpSchema.ServerCapabilities.builder().tools(false).build();
 
@@ -150,8 +153,8 @@ public final class NewPipeMcpServer {
 
         private String transport = "stdio";
         private int port = DEFAULT_PORT;
-        private Localization localization = Localization.DEFAULT;
-        private ContentCountry contentCountry = ContentCountry.DEFAULT;
+        /** What the command line asked to extract in, or {@link Localizations#NONE}. */
+        private Localizations requested = Localizations.NONE;
 
         private static Options parse(final String[] args) {
             final Options options = new Options();
@@ -176,11 +179,10 @@ public final class NewPipeMcpServer {
                         throw new IllegalArgumentException("Unknown argument: " + arg);
                 }
             }
-            if (language != null) {
-                options.localization = new Localization(language, country);
-                options.contentCountry = country == null || country.isEmpty()
-                        ? ContentCountry.DEFAULT : new ContentCountry(country);
-            }
+            // --country is honoured on its own, not only alongside --language: the two select
+            // different things (the "hl" and "gl" an extractor sends), and a caller asking for one
+            // has no reason to have the other silently ignored.
+            options.requested = Localizations.of(language, country);
             return options;
         }
 

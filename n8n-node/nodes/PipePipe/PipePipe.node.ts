@@ -211,6 +211,9 @@ async function runOperation(
 	const limit = PAGINATED_OPERATIONS.includes(key) ? pageLimit(context, i) : undefined;
 	const url = () => (context.getNodeParameter('url', i) as string).trim();
 	const serviceId = () => Number(context.getNodeParameter('serviceId', i));
+	// Every extractor-backed tool takes these; get_more does not need them, because the
+	// server records the language in the page token it hands back.
+	const localization = localizationArgs(context, i);
 
 	switch (key) {
 		case 'service:getAll': {
@@ -220,6 +223,7 @@ async function runOperation(
 
 		case 'search:search': {
 			const result = await client.callTool('search', {
+				...localization,
 				serviceId: serviceId(),
 				query: context.getNodeParameter('query', i) as string,
 				contentFilters: numberList(context.getNodeParameter('contentFilters', i, [])),
@@ -231,6 +235,7 @@ async function runOperation(
 		case 'search:getSuggestions': {
 			const query = context.getNodeParameter('query', i) as string;
 			const result = await client.callTool('get_suggestions', {
+				...localization,
 				serviceId: serviceId(),
 				query,
 			});
@@ -239,10 +244,10 @@ async function runOperation(
 		}
 
 		case 'stream:get':
-			return [await client.callTool('get_stream', { url: url() })];
+			return [await client.callTool('get_stream', { ...localization, url: url() })];
 
 		case 'stream:getComments': {
-			const result = await client.callTool('get_comments', { url: url() });
+			const result = await client.callTool('get_comments', { ...localization, url: url() });
 			if (result.commentsSupported === false || result.commentsDisabled === true) {
 				return [];
 			}
@@ -250,10 +255,11 @@ async function runOperation(
 		}
 
 		case 'channel:get':
-			return [await client.callTool('get_channel', { url: url() })];
+			return [await client.callTool('get_channel', { ...localization, url: url() })];
 
 		case 'channel:getTabItems': {
 			const result = await client.callTool('get_channel_tab', {
+				...localization,
 				tabToken: (context.getNodeParameter('tabToken', i) as string).trim(),
 			});
 			return await collectItems(client, result, limit);
@@ -261,6 +267,7 @@ async function runOperation(
 
 		case 'channel:getFeed': {
 			const result = await client.callTool('get_feed', {
+				...localization,
 				serviceId: serviceId(),
 				url: url(),
 			});
@@ -268,16 +275,16 @@ async function runOperation(
 		}
 
 		case 'playlist:get':
-			return [await client.callTool('get_playlist', { url: url() })];
+			return [await client.callTool('get_playlist', { ...localization, url: url() })];
 
 		case 'playlist:getItems': {
-			const result = await client.callTool('get_playlist', { url: url() });
+			const result = await client.callTool('get_playlist', { ...localization, url: url() });
 			return await collectItems(client, result, limit);
 		}
 
 		case 'kiosk:getAll': {
 			const kioskId = (context.getNodeParameter('kioskId', i, '') as string).trim();
-			const args: JsonObject = { serviceId: serviceId() };
+			const args: JsonObject = { ...localization, serviceId: serviceId() };
 			if (kioskId !== '') {
 				args.kioskId = kioskId;
 			}
@@ -297,6 +304,26 @@ async function runOperation(
 function pageLimit(context: IExecuteFunctions, i: number): number | undefined {
 	const returnAll = context.getNodeParameter('returnAll', i, false) as boolean;
 	return returnAll ? undefined : (context.getNodeParameter('limit', i, 50) as number);
+}
+
+/**
+ * The Language and Country options, as tool arguments.
+ *
+ * Blank values are dropped rather than sent as empty strings, so an untouched
+ * option leaves the server on its own default instead of overriding it with "".
+ */
+function localizationArgs(context: IExecuteFunctions, i: number): JsonObject {
+	const options = context.getNodeParameter('options', i, {}) as IDataObject;
+	const args: JsonObject = {};
+	const language = String(options.language ?? '').trim();
+	const country = String(options.country ?? '').trim();
+	if (language !== '') {
+		args.language = language;
+	}
+	if (country !== '') {
+		args.country = country;
+	}
+	return args;
 }
 
 function asObjects(value: unknown): JsonObject[] {
