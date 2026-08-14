@@ -24,7 +24,7 @@ import org.schabi.newpipe.extractor.downloader.Downloader;
 import org.schabi.newpipe.extractor.exceptions.ExtractionException;
 import org.schabi.newpipe.extractor.localization.ContentCountry;
 import org.schabi.newpipe.extractor.localization.Localization;
-import org.schabi.newpipe.extractor.services.youtube.YoutubeSessionPoTokenProvider;
+import org.schabi.newpipe.extractor.services.youtube.YoutubePoTokenResult;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -38,6 +38,7 @@ import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Provides access to streaming services supported by NewPipe.
@@ -46,9 +47,9 @@ public final class NewPipe {
     private static Downloader downloader;
     private static Localization preferredLocalization;
     private static ContentCountry preferredContentCountry;
-    private static String youtubePlayerClient = "web_safari";
+    private static String youtubePlayerClient = "visionos";
     @Nullable
-    private static YoutubeSessionPoTokenProvider youtubeSessionPoTokenProvider;
+    private static volatile Function<String, YoutubePoTokenResult> youtubePoTokenResolver;
     @Nullable
     private static WebViewAvailabilityChecker webViewAvailabilityChecker;
 
@@ -173,23 +174,23 @@ public final class NewPipe {
 
     public static void setYoutubePlayerClient(final String youtubePlayerClient) {
         if ("mweb".equals(youtubePlayerClient)
-                || "web_safari".equals(youtubePlayerClient)
                 || "android_vr".equals(youtubePlayerClient)
+                || "visionos".equals(youtubePlayerClient)
                 || "tv_downgraded".equals(youtubePlayerClient)) {
             NewPipe.youtubePlayerClient = youtubePlayerClient;
         } else {
-            NewPipe.youtubePlayerClient = "web_safari";
+            NewPipe.youtubePlayerClient = "visionos";
         }
     }
 
-    public static void setYoutubeSessionPoTokenProvider(
-            @Nullable final YoutubeSessionPoTokenProvider provider) {
-        youtubeSessionPoTokenProvider = provider;
+    public static void setYoutubePoTokenResolver(
+            @Nullable final Function<String, YoutubePoTokenResult> resolver) {
+        youtubePoTokenResolver = resolver;
     }
 
     @Nullable
-    public static YoutubeSessionPoTokenProvider getYoutubeSessionPoTokenProvider() {
-        return youtubeSessionPoTokenProvider;
+    public static Function<String, YoutubePoTokenResult> getYoutubePoTokenResolver() {
+        return youtubePoTokenResolver;
     }
 
     public static void setWebViewAvailabilityChecker(
