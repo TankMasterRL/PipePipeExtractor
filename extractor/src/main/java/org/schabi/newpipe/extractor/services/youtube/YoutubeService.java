@@ -229,6 +229,22 @@ public class YoutubeService extends StreamingService {
         return SUPPORTED_LANGUAGES;
     }
 
+    /**
+     * The localization YouTube requests are made with when the caller asks for none.
+     *
+     * <p>"zu" (Zulu) is deliberate rather than a real language preference: YouTube auto-translates
+     * video titles and descriptions into the requested UI language, and asking for a language it
+     * has almost no translation coverage for is what makes it hand back the original text. The cost
+     * is that every string YouTube generates itself — textual upload dates, view and subscriber
+     * counts, item counts — comes back in Zulu too, which a UI hides by rendering its own.</p>
+     *
+     * <p>This is a <i>default</i>, not a pin. A caller that wants YouTube's own strings in a
+     * specific language — a headless consumer with no UI of its own to render them, such as the
+     * MCP server — overrides it per extractor with
+     * {@link org.schabi.newpipe.extractor.Extractor#forceLocalization(Localization)}, which every
+     * YouTube extractor honours through {@code getExtractorLocalization()}. Overriding it does
+     * re-enable auto-translated titles, so it is opt-in.</p>
+     */
     @Override
     public Localization getLocalization() {
         return new Localization("zu");
