@@ -235,12 +235,18 @@ public class YoutubeService extends StreamingService {
      * <p>"zu" (Zulu) is deliberate rather than a real language preference: YouTube auto-translates
      * video titles and descriptions into the requested UI language, and asking for a language it
      * has almost no translation coverage for is what makes it hand back the original text. The cost
-     * is that every string YouTube generates itself — textual upload dates, view and subscriber
-     * counts, item counts — comes back in Zulu too, which a UI hides by rendering its own.</p>
+     * is that every string YouTube generates itself comes back in Zulu too.</p>
      *
-     * <p>This is a <i>default</i>, not a pin. A caller that wants YouTube's own strings in a
-     * specific language — a headless consumer with no UI of its own to render them, such as the
-     * MCP server — overrides it per extractor with
+     * <p>Most of that cost is absorbed here rather than passed on, which is why the choice works
+     * at all: counts are read into numbers by the Zulu-aware branches in
+     * {@code YoutubeStreamInfoItemExtractor} and its siblings, and relative dates by the
+     * {@code timeago-parser} "zu" patterns. A caller reading {@code getViewCount()} or
+     * {@code getUploadDate()} therefore never sees Zulu. What is not absorbed is the text passed
+     * through verbatim — {@code getTextualUploadDate()}, a comment's textual like count, and
+     * fields such as the category.</p>
+     *
+     * <p>This is a <i>default</i>, not a pin. A caller that needs those verbatim strings in a
+     * specific language overrides it per extractor with
      * {@link org.schabi.newpipe.extractor.Extractor#forceLocalization(Localization)}, which every
      * YouTube extractor honours through {@code getExtractorLocalization()}. Overriding it does
      * re-enable auto-translated titles, so it is opt-in.</p>

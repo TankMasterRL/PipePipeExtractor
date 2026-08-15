@@ -359,7 +359,7 @@ export const pipePipeProperties: INodeProperties[] = [
 				default: '',
 				placeholder: 'en-GB',
 				description:
-					'Language the extracted text should be in, as an ISO 639-1 code with an optional region. Leave empty to use the server’s default — note that for YouTube that default is Zulu, which keeps video titles untranslated but returns view counts, subscriber counts and upload dates in Zulu.',
+					'Language the extracted text should be in, as an ISO 639-1 code with an optional region. Leave empty to use the server’s default — note that for YouTube that default is Zulu, which keeps video titles untranslated but returns textual fields such as textualUploadDate in Zulu. Numeric fields like viewCount are unaffected either way.',
 			},
 		],
 	},

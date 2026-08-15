@@ -84,16 +84,20 @@ returns. Leaving them empty uses the server's `--language`/`--country`.
 
 Setting **Language** matters most for YouTube, which otherwise extracts in Zulu. That
 is deliberate upstream — asking YouTube for a language it barely translates into is
-what makes it hand back original, untranslated video titles — but it also means the
-strings YouTube generates itself arrive in Zulu:
+what makes it hand back original, untranslated video titles.
+
+Only the fields carrying YouTube's text verbatim are affected. Counts are not: the
+extractor parses them into numbers before this node ever sees them, so `viewCount`,
+`subscriberCount`, `likeCount` and `streamCount` are unaffected either way.
 
 | | Default (`zu`) | With **Language** `en-GB` |
 | --- | --- | --- |
-| Titles, descriptions | original, untranslated | auto-translated into English |
-| Upload dates, view and subscriber counts | Zulu (`izinyanga ezingu-3 ezedlule`) | English (`3 months ago`) |
+| `name`, `description` | original, untranslated | auto-translated into English |
+| `textualUploadDate`, comments' `textualLikeCount`, `category` | Zulu (`izinyanga ezingu-3 ezedlule`) | English (`3 months ago`) |
+| `viewCount`, `subscriberCount`, `likeCount`, `streamCount` | numbers | numbers |
 
-So it is a trade rather than a fix: set **Language** when you want YouTube's own
-strings readable, and leave it empty when untranslated titles matter more.
+So it is a trade rather than a fix: set **Language** when you need those textual
+fields readable, and leave it empty when untranslated titles matter more.
 
 Continuation pages inherit the language of the page they continue, so **Return All**
 does not need the option repeated.

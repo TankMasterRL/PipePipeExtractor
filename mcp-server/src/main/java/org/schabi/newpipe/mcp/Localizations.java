@@ -11,10 +11,15 @@ import org.schabi.newpipe.extractor.suggestion.SuggestionExtractor;
  * <p>This exists because a service is free to ignore {@link
  * org.schabi.newpipe.extractor.NewPipe#getPreferredLocalization()}, and YouTube does: its
  * {@code getLocalization()} returns {@code zu} so that YouTube hands back original, untranslated
- * video titles. That is the right default for a player UI, which renders its own strings, and the
- * wrong one for a headless consumer like this server, where YouTube's own strings — textual upload
- * dates, view and subscriber counts, item counts — are part of the payload and would arrive in
- * Zulu.</p>
+ * video titles. The extractor absorbs most of what that costs — counts are parsed into numbers by
+ * Zulu-aware branches, relative dates by the {@code timeago-parser} "zu" patterns — so the
+ * numeric fields this server emits are unaffected.</p>
+ *
+ * <p>What is not absorbed is text passed through verbatim, and this server serializes exactly
+ * that: {@code getTextualUploadDate()} and not the parsed
+ * {@link org.schabi.newpipe.extractor.localization.DateWrapper} beside it. So upload dates reach
+ * callers in Zulu with no parsed field to fall back on, and so do a comment's textual like count
+ * and fields such as the category.</p>
  *
  * <p>The override that a service cannot ignore is {@link Extractor#forceLocalization}, so this
  * class applies the caller's choice per extractor rather than by mutating the process-wide
