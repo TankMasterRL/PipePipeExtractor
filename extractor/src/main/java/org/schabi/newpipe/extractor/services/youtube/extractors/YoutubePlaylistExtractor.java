@@ -67,7 +67,7 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
     @Override
     public void onFetchPage(@Nonnull final Downloader downloader) throws IOException,
             ExtractionException {
-        final Localization localization = getService().getLocalization();
+        final Localization localization = getExtractorLocalization();
         final byte[] body = JsonWriter.string(prepareDesktopJsonBuilder(localization,
                         getExtractorContentCountry())
                         .value("browseId", "VL" + getId())
@@ -340,7 +340,7 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
         addYoutubeHeaders(headers);
 
         final Response response = getDownloader().post(page.getUrl(), headers, page.getBody(),
-                getService().getLocalization());
+                getExtractorLocalization());
         final JsonObject ajaxJson = JsonUtils.toJsonObject(getValidJsonResponseBody(response));
 
         final JsonArray continuation = ajaxJson.getArray("onResponseReceivedActions")
@@ -402,7 +402,7 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
         }
 
         final byte[] body = JsonWriter.string(prepareDesktopJsonBuilder(
-                        getService().getLocalization(), getExtractorContentCountry())
+                        getExtractorLocalization(), getExtractorContentCountry())
                         .value("continuation", continuation)
                         .done())
                 .getBytes(StandardCharsets.UTF_8);

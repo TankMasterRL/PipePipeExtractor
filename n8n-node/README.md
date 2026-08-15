@@ -19,8 +19,10 @@ Start the extractor's MCP server with the HTTP transport:
 ./gradlew :mcp-server:run --args="--transport http --port 3000"
 ```
 
-Optional `--language <lang>` and `--country <country>` flags set the extractor's
-localization and content country.
+Optional `--language <lang>` and `--country <country>` flags set the default
+localization and content country for every extraction. Either can be given on its
+own. The node's **Language** and **Country** options override them per operation —
+see [Language and country](#language-and-country).
 
 ## Installation
 
@@ -71,6 +73,34 @@ Service, kiosk and search-filter dropdowns are populated from the server's
 
 To page through a channel, use **Channel → Get** first and pass one of the
 `tabs[].token` values from its output to **Channel → Get Tab Items**.
+
+### Language and country
+
+Every operation except **Service → Get Many** has a **Language** and a **Country**
+option, under **Options**. **Language** is an ISO 639-1 code with an optional region
+(`en`, `en-GB`) and sets the language of the text the extractor returns; **Country** is
+an ISO 3166-1 alpha-2 code (`GB`, `SE`) and selects which region's results a service
+returns. Leaving them empty uses the server's `--language`/`--country`.
+
+Setting **Language** matters most for YouTube, which otherwise extracts in Zulu. That
+is deliberate upstream — asking YouTube for a language it barely translates into is
+what makes it hand back original, untranslated video titles.
+
+Only the fields carrying YouTube's text verbatim are affected. Counts are not: the
+extractor parses them into numbers before this node ever sees them, so `viewCount`,
+`subscriberCount`, `likeCount` and `streamCount` are unaffected either way.
+
+| | Default (`zu`) | With **Language** `en-GB` |
+| --- | --- | --- |
+| `name`, `description` | original, untranslated | auto-translated into English |
+| `textualUploadDate`, comments' `textualLikeCount`, `category` | Zulu (`izinyanga ezingu-3 ezedlule`) | English (`3 months ago`) |
+| `viewCount`, `subscriberCount`, `likeCount`, `streamCount` | numbers | numbers |
+
+So it is a trade rather than a fix: set **Language** when you need those textual
+fields readable, and leave it empty when untranslated titles matter more.
+
+Continuation pages inherit the language of the page they continue, so **Return All**
+does not need the option repeated.
 
 ### Pagination
 

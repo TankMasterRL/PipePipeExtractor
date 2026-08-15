@@ -8,21 +8,28 @@ import org.schabi.newpipe.extractor.ListExtractor;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.StreamingService;
+import org.schabi.newpipe.extractor.channel.ChannelExtractor;
 import org.schabi.newpipe.extractor.channel.ChannelInfo;
+import org.schabi.newpipe.extractor.channel.ChannelTabExtractor;
 import org.schabi.newpipe.extractor.channel.ChannelTabInfo;
+import org.schabi.newpipe.extractor.comments.CommentsExtractor;
 import org.schabi.newpipe.extractor.comments.CommentsInfo;
 import org.schabi.newpipe.extractor.comments.CommentsInfoItem;
+import org.schabi.newpipe.extractor.feed.FeedExtractor;
 import org.schabi.newpipe.extractor.feed.FeedInfo;
 import org.schabi.newpipe.extractor.kiosk.KioskExtractor;
 import org.schabi.newpipe.extractor.kiosk.KioskInfo;
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
 import org.schabi.newpipe.extractor.linkhandler.SearchQueryHandler;
 import org.schabi.newpipe.extractor.linkhandler.SearchQueryHandlerFactory;
+import org.schabi.newpipe.extractor.playlist.PlaylistExtractor;
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo;
+import org.schabi.newpipe.extractor.search.SearchExtractor;
 import org.schabi.newpipe.extractor.search.SearchInfo;
 import org.schabi.newpipe.extractor.search.filter.Filter;
 import org.schabi.newpipe.extractor.search.filter.FilterGroup;
 import org.schabi.newpipe.extractor.search.filter.FilterItem;
+import org.schabi.newpipe.extractor.stream.StreamExtractor;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 import org.schabi.newpipe.extractor.suggestion.SuggestionExtractor;
@@ -42,11 +49,23 @@ final class NewPipeTools {
     private final McpJsonMapper jsonMapper;
     private final Cursor cursor;
     private final Serializer serializer;
+    private final Localizations defaultLocalization;
 
     NewPipeTools(final McpJsonMapper mapper) {
+        this(mapper, Localizations.NONE);
+    }
+
+    /**
+     * @param defaultLocalization what to extract in when a call names no language of its own —
+     *                            the server's {@code --language}/{@code --country}, or
+     *                            {@link Localizations#NONE} to leave every service on its own
+     *                            default
+     */
+    NewPipeTools(final McpJsonMapper mapper, final Localizations defaultLocalization) {
         this.jsonMapper = mapper;
         this.cursor = new Cursor(mapper);
         this.serializer = new Serializer(cursor);
+        this.defaultLocalization = defaultLocalization;
     }
 
     @FunctionalInterface
@@ -63,7 +82,7 @@ final class NewPipeTools {
                 schema(Json.obj(), List.of()),
                 this::listServices));
 
-        specs.add(spec("get_suggestions",
+        specs.add(localizableSpec("get_suggestions",
                 "Get search autocomplete suggestions for a query on a given service.",
                 schema(Json.obj(
                         "serviceId", intProp("Numeric service id (see list_services)"),
@@ -71,7 +90,7 @@ final class NewPipeTools {
                         List.of("serviceId", "query")),
                 this::getSuggestions));
 
-        specs.add(spec("search",
+        specs.add(localizableSpec("search",
                 "Search a service. Returns the first page of results; use get_more with the "
                         + "returned nextPageToken for further pages.",
                 schema(Json.obj(
@@ -84,37 +103,37 @@ final class NewPipeTools {
                         List.of("serviceId", "query")),
                 this::search));
 
-        specs.add(spec("get_stream",
+        specs.add(localizableSpec("get_stream",
                 "Get details of a single stream (video/track) by its URL, including metadata and "
                         + "playable audio/video stream URLs (which may be time-limited).",
                 schema(Json.obj("url", stringProp("The stream URL")), List.of("url")),
                 this::getStream));
 
-        specs.add(spec("get_channel",
+        specs.add(localizableSpec("get_channel",
                 "Get channel details by URL, including the available tabs. Each tab carries a "
                         + "token to pass to get_channel_tab.",
                 schema(Json.obj("url", stringProp("The channel URL")), List.of("url")),
                 this::getChannel));
 
-        specs.add(spec("get_channel_tab",
+        specs.add(localizableSpec("get_channel_tab",
                 "Get the first page of items of a channel tab, using a tab token from get_channel.",
                 schema(Json.obj("tabToken", stringProp("A tab token returned by get_channel")),
                         List.of("tabToken")),
                 this::getChannelTab));
 
-        specs.add(spec("get_playlist",
+        specs.add(localizableSpec("get_playlist",
                 "Get a playlist by URL: its metadata and the first page of its streams.",
                 schema(Json.obj("url", stringProp("The playlist URL")), List.of("url")),
                 this::getPlaylist));
 
-        specs.add(spec("get_comments",
+        specs.add(localizableSpec("get_comments",
                 "Get the first page of comments for a stream URL. Reports if comments are "
                         + "unsupported or disabled.",
                 schema(Json.obj("url", stringProp("The stream URL whose comments to fetch")),
                         List.of("url")),
                 this::getComments));
 
-        specs.add(spec("get_kiosk",
+        specs.add(localizableSpec("get_kiosk",
                 "Get a kiosk (e.g. trending/charts) for a service. Omit kioskId for the default "
                         + "kiosk; available kiosk ids are listed by list_services.",
                 schema(Json.obj(
@@ -123,7 +142,7 @@ final class NewPipeTools {
                         List.of("serviceId")),
                 this::getKiosk));
 
-        specs.add(spec("get_feed",
+        specs.add(localizableSpec("get_feed",
                 "Get a service's lightweight channel feed by URL (only where the service supports "
                         + "a dedicated feed).",
                 schema(Json.obj(
@@ -132,7 +151,7 @@ final class NewPipeTools {
                         List.of("serviceId", "url")),
                 this::getFeed));
 
-        specs.add(spec("get_more",
+        specs.add(localizableSpec("get_more",
                 "Fetch the next page of any paginated result, using a nextPageToken returned by "
                         + "search, get_channel_tab, get_playlist, get_comments or get_kiosk.",
                 schema(Json.obj("pageToken", stringProp("A nextPageToken from a previous result")),
@@ -156,10 +175,12 @@ final class NewPipeTools {
         if (extractor == null) {
             return Json.obj("suggestions", new ArrayList<>());
         }
+        localizationOf(arguments).applyTo(extractor);
         return Json.obj("suggestions", extractor.suggestionList(reqStr(arguments, "query")));
     }
 
     private Object search(final Map<String, Object> arguments) throws Exception {
+        final Localizations localization = localizationOf(arguments);
         final StreamingService service = NewPipe.getService(reqInt(arguments, "serviceId"));
         final SearchQueryHandlerFactory factory = service.getSearchQHFactory();
         final List<FilterItem> contentFilters =
@@ -168,38 +189,67 @@ final class NewPipeTools {
                 resolveFilterIds(factory, asIntList(arguments.get("sortFilters")));
         final SearchQueryHandler handler = factory.fromQuery(reqStr(arguments, "query"),
                 contentFilters, sortFilters.isEmpty() ? null : sortFilters);
-        return serializer.searchInfo(SearchInfo.getInfo(service, handler));
+        final SearchExtractor extractor = service.getSearchExtractor(handler);
+        localization.applyTo(extractor);
+        extractor.fetchPage();
+        return serializerFor(localization).searchInfo(SearchInfo.getInfo(extractor));
     }
 
     private Object getStream(final Map<String, Object> arguments) throws Exception {
-        return serializer.streamInfo(StreamInfo.getInfo(reqStr(arguments, "url")));
+        final Localizations localization = localizationOf(arguments);
+        final String url = reqStr(arguments, "url");
+        final StreamExtractor extractor = NewPipe.getServiceByUrl(url).getStreamExtractor(url);
+        localization.applyTo(extractor);
+        // StreamInfo.getInfo(extractor) fetches the page itself, unlike its list counterparts.
+        return serializerFor(localization).streamInfo(StreamInfo.getInfo(extractor));
     }
 
     private Object getChannel(final Map<String, Object> arguments) throws Exception {
-        return serializer.channelInfo(ChannelInfo.getInfo(reqStr(arguments, "url")));
+        final Localizations localization = localizationOf(arguments);
+        final String url = reqStr(arguments, "url");
+        final ChannelExtractor extractor = NewPipe.getServiceByUrl(url).getChannelExtractor(url);
+        localization.applyTo(extractor);
+        extractor.fetchPage();
+        return serializerFor(localization).channelInfo(ChannelInfo.getInfo(extractor));
     }
 
     private Object getChannelTab(final Map<String, Object> arguments) throws Exception {
         final Map<String, Object> tab = cursor.decode(reqStr(arguments, "tabToken"));
+        final Localizations localization =
+                localizationOf(arguments, Cursor.localizationFrom(tab));
         final StreamingService service = NewPipe.getService(intField(tab, "serviceId"));
         final ListLinkHandler handler = Cursor.handlerFrom(tab.get("tab"));
-        return serializer.channelTabInfo(ChannelTabInfo.getInfo(service, handler));
+        final ChannelTabExtractor extractor = service.getChannelTabExtractor(handler);
+        localization.applyTo(extractor);
+        extractor.fetchPage();
+        return serializerFor(localization).channelTabInfo(ChannelTabInfo.getInfo(extractor));
     }
 
     private Object getPlaylist(final Map<String, Object> arguments) throws Exception {
-        return serializer.playlistInfo(PlaylistInfo.getInfo(reqStr(arguments, "url")));
+        final Localizations localization = localizationOf(arguments);
+        final String url = reqStr(arguments, "url");
+        final PlaylistExtractor extractor = NewPipe.getServiceByUrl(url).getPlaylistExtractor(url);
+        localization.applyTo(extractor);
+        extractor.fetchPage();
+        return serializerFor(localization).playlistInfo(PlaylistInfo.getInfo(extractor));
     }
 
     private Object getComments(final Map<String, Object> arguments) throws Exception {
-        final CommentsInfo info = CommentsInfo.getInfo(reqStr(arguments, "url"));
-        if (info == null) {
+        final Localizations localization = localizationOf(arguments);
+        final String url = reqStr(arguments, "url");
+        final CommentsExtractor extractor = NewPipe.getServiceByUrl(url).getCommentsExtractor(url);
+        if (extractor == null) {
             return Json.obj("commentsSupported", false,
                     "message", "This service does not support comments extraction.");
         }
-        return serializer.commentsInfo(info);
+        localization.applyTo(extractor);
+        // CommentsInfo.getInfo(extractor) fetches the page itself.
+        final CommentsInfo info = CommentsInfo.getInfo(extractor);
+        return serializerFor(localization).commentsInfo(info);
     }
 
     private Object getKiosk(final Map<String, Object> arguments) throws Exception {
+        final Localizations localization = localizationOf(arguments);
         final StreamingService service = NewPipe.getService(reqInt(arguments, "serviceId"));
         final String kioskId = str(arguments, "kioskId");
         final KioskExtractor extractor = kioskId == null || kioskId.isEmpty()
@@ -208,17 +258,30 @@ final class NewPipeTools {
         if (extractor == null) {
             throw new IllegalArgumentException("No kiosk is available for this service");
         }
+        localization.applyTo(extractor);
         extractor.fetchPage();
-        return serializer.kioskInfo(KioskInfo.getInfo(extractor));
+        return serializerFor(localization).kioskInfo(KioskInfo.getInfo(extractor));
     }
 
     private Object getFeed(final Map<String, Object> arguments) throws Exception {
+        final Localizations localization = localizationOf(arguments);
         final StreamingService service = NewPipe.getService(reqInt(arguments, "serviceId"));
-        return serializer.feedInfo(FeedInfo.getInfo(service, reqStr(arguments, "url")));
+        final FeedExtractor extractor = service.getFeedExtractor(reqStr(arguments, "url"));
+        if (extractor == null) {
+            throw new IllegalArgumentException("Service \""
+                    + service.getServiceInfo().getName() + "\" doesn't support FeedExtractor.");
+        }
+        localization.applyTo(extractor);
+        // FeedInfo.getInfo(extractor) fetches the page itself.
+        return serializerFor(localization).feedInfo(FeedInfo.getInfo(extractor));
     }
 
     private Object getMore(final Map<String, Object> arguments) throws Exception {
         final Map<String, Object> cont = cursor.decode(reqStr(arguments, "pageToken"));
+        // The token carries the language its own page was fetched in, so a continuation stays in
+        // that language without the client having to repeat it. An explicit argument still wins.
+        final Localizations localization = localizationOf(arguments, Cursor.localizationFrom(cont));
+        final Cursor pageCursor = new Cursor(jsonMapper, localization);
         final String kind = (String) cont.get("kind");
         final int serviceId = intField(cont, "serviceId");
         final StreamingService service = NewPipe.getService(serviceId);
@@ -236,43 +299,72 @@ final class NewPipeTools {
             final List<FilterItem> sortFilters = resolveFilterIds(factory, sortFilterIds);
             final SearchQueryHandler handler = factory.fromQuery(query, contentFilters,
                     sortFilters.isEmpty() ? null : sortFilters);
-            final ListExtractor.InfoItemsPage<InfoItem> next =
-                    SearchInfo.getMoreItems(service, handler, page);
+            final SearchExtractor extractor = service.getSearchExtractor(handler);
+            localization.applyTo(extractor);
+            final ListExtractor.InfoItemsPage<InfoItem> next = extractor.getPage(page);
             result = next;
-            nextToken = next.hasNextPage() ? cursor.searchNext(serviceId, query,
+            nextToken = next.hasNextPage() ? pageCursor.searchNext(serviceId, query,
                     contentFilterIds, sortFilterIds, next.getNextPage()) : null;
         } else if ("channelTab".equals(kind)) {
             final ListLinkHandler handler = Cursor.handlerFrom(cont.get("tab"));
-            final ListExtractor.InfoItemsPage<InfoItem> next =
-                    ChannelTabInfo.getMoreItems(service, handler, page);
+            final ChannelTabExtractor extractor = service.getChannelTabExtractor(handler);
+            localization.applyTo(extractor);
+            final ListExtractor.InfoItemsPage<InfoItem> next = extractor.getPage(page);
             result = next;
             nextToken = next.hasNextPage()
-                    ? cursor.channelTabNext(serviceId, handler, next.getNextPage()) : null;
+                    ? pageCursor.channelTabNext(serviceId, handler, next.getNextPage()) : null;
         } else if ("playlist".equals(kind)) {
             final String url = (String) cont.get("url");
-            final ListExtractor.InfoItemsPage<StreamInfoItem> next =
-                    PlaylistInfo.getMoreItems(service, url, page);
+            final PlaylistExtractor extractor = service.getPlaylistExtractor(url);
+            localization.applyTo(extractor);
+            final ListExtractor.InfoItemsPage<StreamInfoItem> next = extractor.getPage(page);
             result = next;
             nextToken = next.hasNextPage()
-                    ? cursor.urlListNext("playlist", serviceId, url, next.getNextPage()) : null;
+                    ? pageCursor.urlListNext("playlist", serviceId, url, next.getNextPage()) : null;
         } else if ("comments".equals(kind)) {
             final String url = (String) cont.get("url");
-            final ListExtractor.InfoItemsPage<CommentsInfoItem> next =
-                    CommentsInfo.getMoreItems(service, url, page);
+            final CommentsExtractor extractor = service.getCommentsExtractor(url);
+            localization.applyTo(extractor);
+            final ListExtractor.InfoItemsPage<CommentsInfoItem> next = extractor.getPage(page);
             result = next;
             nextToken = next.hasNextPage()
-                    ? cursor.urlListNext("comments", serviceId, url, next.getNextPage()) : null;
+                    ? pageCursor.urlListNext("comments", serviceId, url, next.getNextPage()) : null;
         } else if ("kiosk".equals(kind)) {
             final String url = (String) cont.get("url");
-            final ListExtractor.InfoItemsPage<StreamInfoItem> next =
-                    KioskInfo.getMoreItems(service, url, page);
+            final KioskExtractor extractor = service.getKioskList().getExtractorByUrl(url, page);
+            localization.applyTo(extractor);
+            final ListExtractor.InfoItemsPage<StreamInfoItem> next = extractor.getPage(page);
             result = next;
             nextToken = next.hasNextPage()
-                    ? cursor.urlListNext("kiosk", serviceId, url, next.getNextPage()) : null;
+                    ? pageCursor.urlListNext("kiosk", serviceId, url, next.getNextPage()) : null;
         } else {
             throw new IllegalArgumentException("Unknown or non-paginable page token");
         }
-        return serializer.itemsPage(result, nextToken);
+        return new Serializer(pageCursor).itemsPage(result, nextToken);
+    }
+
+    /** The language a call should run in: its own arguments, else the server's default. */
+    private Localizations localizationOf(final Map<String, Object> arguments) {
+        return localizationOf(arguments, defaultLocalization);
+    }
+
+    /**
+     * The same, for a call that has a second source to fall back on before the server default —
+     * the localization recorded in the page or tab token it was given.
+     */
+    private Localizations localizationOf(final Map<String, Object> arguments,
+                                         final Localizations fallback) {
+        final Localizations requested =
+                Localizations.of(str(arguments, "language"), str(arguments, "country"));
+        if (!requested.isEmpty()) {
+            return requested;
+        }
+        return fallback.isEmpty() ? defaultLocalization : fallback;
+    }
+
+    /** A serializer whose page tokens carry {@code localization}, so continuations inherit it. */
+    private Serializer serializerFor(final Localizations localization) {
+        return new Serializer(new Cursor(jsonMapper, localization));
     }
 
     /**
@@ -339,6 +431,31 @@ final class NewPipeTools {
             }
         }
         return result;
+    }
+
+    /**
+     * A {@link #spec} for a tool backed by an extractor, adding the optional {@code language} and
+     * {@code country} arguments every such tool honours.
+     */
+    @SuppressWarnings("unchecked")
+    private McpServerFeatures.SyncToolSpecification localizableSpec(
+            final String name,
+            final String description,
+            final Map<String, Object> inputSchema,
+            final ToolFn function) {
+        final Map<String, Object> properties =
+                (Map<String, Object>) inputSchema.get("properties");
+        properties.put("language", stringProp(
+                "Optional language for the text this call returns, as an ISO 639-1 code with an "
+                        + "optional region (\"en\", \"en-GB\"). Defaults to the server's "
+                        + "--language. Note that YouTube otherwise extracts in Zulu, which is what "
+                        + "keeps video titles untranslated but renders view counts, subscriber "
+                        + "counts and upload dates in Zulu."));
+        properties.put("country", stringProp(
+                "Optional content country as an ISO 3166-1 alpha-2 code (\"GB\", \"SE\"), "
+                        + "deciding which region's results a service returns. Defaults to the "
+                        + "server's --country."));
+        return spec(name, description, inputSchema, function);
     }
 
     private McpServerFeatures.SyncToolSpecification spec(final String name,

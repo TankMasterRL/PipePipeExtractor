@@ -326,4 +326,41 @@ export const pipePipeProperties: INodeProperties[] = [
 			},
 		},
 	},
+
+	// ---------------------------------- options --------------------------------------
+	// Everything but Service → Get Many reaches an extractor, and so accepts a language
+	// and a content country. Hiding these by resource is enough: `service` has no other
+	// operation.
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['channel', 'kiosk', 'playlist', 'search', 'stream'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Country',
+				name: 'country',
+				type: 'string',
+				default: '',
+				placeholder: 'GB',
+				description:
+					'Content country as an ISO 3166-1 alpha-2 code, deciding which region’s results the service returns. Leave empty to use the server’s default.',
+			},
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'string',
+				default: '',
+				placeholder: 'en-GB',
+				description:
+					'Language the extracted text should be in, as an ISO 639-1 code with an optional region. Leave empty to use the server’s default — note that for YouTube that default is Zulu, which keeps video titles untranslated but returns textual fields such as textualUploadDate in Zulu. Numeric fields like viewCount are unaffected either way.',
+			},
+		],
+	},
 ];
