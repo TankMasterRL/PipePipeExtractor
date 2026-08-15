@@ -14,6 +14,7 @@ import org.schabi.newpipe.extractor.feed.FeedInfo;
 import org.schabi.newpipe.extractor.kiosk.KioskInfo;
 import org.schabi.newpipe.extractor.kiosk.KioskList;
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
+import org.schabi.newpipe.extractor.localization.DateWrapper;
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo;
 import org.schabi.newpipe.extractor.playlist.PlaylistInfoItem;
 import org.schabi.newpipe.extractor.search.SearchInfo;
@@ -91,6 +92,8 @@ final class Serializer {
                 "subChannelName", emptyToNull(info.getSubChannelName()),
                 "subChannelUrl", emptyToNull(info.getSubChannelUrl()),
                 "textualUploadDate", info.getTextualUploadDate(),
+                "uploadDate", isoDate(info.getUploadDate()),
+                "uploadDateApproximate", dateApproximate(info.getUploadDate()),
                 "thumbnails", images(info.getThumbnails()),
                 "description", description(info.getDescription()),
                 "category", emptyToNull(info.getCategory()),
@@ -280,6 +283,8 @@ final class Serializer {
                 "duration", item.getDuration(),
                 "viewCount", item.getViewCount(),
                 "textualUploadDate", item.getTextualUploadDate(),
+                "uploadDate", isoDate(item.getUploadDate()),
+                "uploadDateApproximate", dateApproximate(item.getUploadDate()),
                 "shortDescription", item.getShortDescription(),
                 "thumbnailUrl", emptyToNull(item.getThumbnailUrl()));
     }
@@ -320,6 +325,8 @@ final class Serializer {
                 "uploaderUrl", item.getUploaderUrl(),
                 "uploaderVerified", item.isUploaderVerified(),
                 "textualUploadDate", item.getTextualUploadDate(),
+                "uploadDate", isoDate(item.getUploadDate()),
+                "uploadDateApproximate", dateApproximate(item.getUploadDate()),
                 "likeCount", item.getLikeCount() == CommentsInfoItem.NO_LIKE_COUNT
                         ? null : item.getLikeCount(),
                 "textualLikeCount", emptyToNull(item.getTextualLikeCount()),
@@ -448,6 +455,30 @@ final class Serializer {
             result.add(throwable.toString());
         }
         return result;
+    }
+
+    /**
+     * The parsed upload date as an ISO-8601 instant, or null where the service gave none and the
+     * extractor could not derive one.
+     *
+     * <p>This is emitted beside {@code textualUploadDate} rather than instead of it, because the
+     * two answer different questions: the textual form is what the service said, in whatever
+     * language it was asked for, and this is a machine-comparable date that does not change with
+     * the language. {@link DateWrapper} normalizes to UTC, so the rendering is always
+     * {@code Z}-suffixed.</p>
+     */
+    private static String isoDate(final DateWrapper date) {
+        return date == null ? null : date.offsetDateTime().toString();
+    }
+
+    /**
+     * Whether {@link #isoDate} was derived from a relative phrase ("3 months ago") rather than an
+     * exact timestamp, or null when there is no date at all. Worth carrying: an approximate date
+     * is accurate to roughly the unit it was stated in, which matters to anything sorting or
+     * filtering on it.
+     */
+    private static Boolean dateApproximate(final DateWrapper date) {
+        return date == null ? null : date.isApproximation();
     }
 
     private static List<String> nullIfEmpty(final List<String> values) {
