@@ -95,9 +95,18 @@ extractor parses them into numbers before this node ever sees them, so `viewCoun
 | `name`, `description` | original, untranslated | auto-translated into English |
 | `textualUploadDate`, comments' `textualLikeCount`, `category` | Zulu (`izinyanga ezingu-3 ezedlule`) | English (`3 months ago`) |
 | `viewCount`, `subscriberCount`, `likeCount`, `streamCount` | numbers | numbers |
+| `uploadDate`, `uploadDateApproximate` | ISO-8601 UTC | ISO-8601 UTC |
 
 So it is a trade rather than a fix: set **Language** when you need those textual
 fields readable, and leave it empty when untranslated titles matter more.
+
+**If you only need the date, you may not need this option at all.** Streams, stream
+items and comments carry `uploadDate` — the same date parsed to an ISO-8601 instant
+in UTC (`2024-03-15T10:30Z`) — which does not move with the language, so sorting,
+filtering and date arithmetic work regardless. `uploadDateApproximate` is `true` when
+it was derived from a relative phrase rather than an exact timestamp, so it is
+accurate to roughly the unit that phrase used. Both are absent when the service gave
+no date and none could be derived.
 
 Continuation pages inherit the language of the page they continue, so **Return All**
 does not need the option repeated.
