@@ -195,6 +195,12 @@ export const pipePipeProperties: INodeProperties[] = [
 				action: 'Get stream comments',
 				description: 'Get the comments of a stream, one item per comment',
 			},
+			{
+				name: 'Get Subtitles',
+				value: 'getSubtitles',
+				action: 'Get stream subtitles',
+				description: 'List a stream’s caption tracks with the URL of each track’s text',
+			},
 		],
 	},
 
@@ -271,10 +277,31 @@ export const pipePipeProperties: INodeProperties[] = [
 	},
 	urlProperty(
 		'stream',
-		['get', 'getComments'],
+		['get', 'getComments', 'getSubtitles'],
 		'https://www.youtube.com/watch?v=…',
 		'URL of the stream',
 	),
+	{
+		displayName: 'Subtitle Format',
+		name: 'subtitleFormat',
+		type: 'options',
+		default: 'vtt',
+		description: 'Format of the caption text each track URL points to',
+		options: [
+			{ name: 'SubRip (SRT)', value: 'srt' },
+			{ name: 'Timed Text (TTML)', value: 'ttml' },
+			{ name: 'TranScript V1', value: 'srv1' },
+			{ name: 'TranScript V2', value: 'srv2' },
+			{ name: 'TranScript V3', value: 'srv3' },
+			{ name: 'WebVTT', value: 'vtt' },
+		],
+		displayOptions: {
+			show: {
+				resource: ['stream'],
+				operation: ['getSubtitles'],
+			},
+		},
+	},
 	urlProperty('channel', ['get', 'getFeed'], 'https://www.youtube.com/@…', 'URL of the channel'),
 	urlProperty(
 		'playlist',

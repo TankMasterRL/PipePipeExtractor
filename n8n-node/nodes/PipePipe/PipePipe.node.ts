@@ -246,6 +246,16 @@ async function runOperation(
 		case 'stream:get':
 			return [await client.callTool('get_stream', { ...localization, url: url() })];
 
+		// One item for the whole stream, so its tracks stay together with the stream URL.
+		case 'stream:getSubtitles':
+			return [
+				await client.callTool('get_subtitles', {
+					...localization,
+					url: url(),
+					format: context.getNodeParameter('subtitleFormat', i, 'vtt') as string,
+				}),
+			];
+
 		case 'stream:getComments': {
 			const result = await client.callTool('get_comments', { ...localization, url: url() });
 			if (result.commentsSupported === false || result.commentsDisabled === true) {

@@ -5,6 +5,7 @@ import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.ListExtractor;
+import org.schabi.newpipe.extractor.MediaFormat;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.StreamingService;
@@ -109,6 +110,18 @@ final class NewPipeTools {
                 schema(Json.obj("url", stringProp("The stream URL")), List.of("url")),
                 this::getStream));
 
+        specs.add(localizableSpec("get_subtitles",
+                "List the subtitle (caption) tracks of a stream by its URL: each track's "
+                        + "language, whether it is auto-generated, and the URL of its text in "
+                        + "the requested format. Only caption text is listed, never media.",
+                schema(Json.obj(
+                        "url", stringProp("The stream URL"),
+                        "format", stringProp("Optional caption text format: "
+                                + String.join(", ", subtitleFormatNames())
+                                + ". Defaults to vtt.")),
+                        List.of("url")),
+                this::getSubtitles));
+
         specs.add(localizableSpec("get_channel",
                 "Get channel details by URL, including the available tabs. Each tab carries a "
                         + "token to pass to get_channel_tab.",
@@ -202,6 +215,45 @@ final class NewPipeTools {
         localization.applyTo(extractor);
         // StreamInfo.getInfo(extractor) fetches the page itself, unlike its list counterparts.
         return serializerFor(localization).streamInfo(StreamInfo.getInfo(extractor));
+    }
+
+    private Object getSubtitles(final Map<String, Object> arguments) throws Exception {
+        final Localizations localization = localizationOf(arguments);
+        final String url = reqStr(arguments, "url");
+        final MediaFormat format = subtitleFormat(str(arguments, "format"));
+        final StreamingService service = NewPipe.getServiceByUrl(url);
+        final StreamExtractor extractor = service.getStreamExtractor(url);
+        localization.applyTo(extractor);
+        extractor.fetchPage();
+        return serializerFor(localization).subtitles(
+                service.getServiceId(), extractor.getUrl(), extractor.getSubtitles(format));
+    }
+
+    /** Caption text formats a caller may ask {@code get_subtitles} for, by file suffix. */
+    private static final List<MediaFormat> SUBTITLE_FORMATS = List.of(
+            MediaFormat.VTT, MediaFormat.TTML, MediaFormat.SRT,
+            MediaFormat.TRANSCRIPT1, MediaFormat.TRANSCRIPT2, MediaFormat.TRANSCRIPT3);
+
+    static List<String> subtitleFormatNames() {
+        final List<String> names = new ArrayList<>();
+        for (final MediaFormat format : SUBTITLE_FORMATS) {
+            names.add(format.getSuffix());
+        }
+        return names;
+    }
+
+    /** The requested caption format by suffix (case-insensitive); WebVTT when none is given. */
+    static MediaFormat subtitleFormat(final String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return MediaFormat.VTT;
+        }
+        for (final MediaFormat format : SUBTITLE_FORMATS) {
+            if (format.getSuffix().equalsIgnoreCase(name.trim())) {
+                return format;
+            }
+        }
+        throw new IllegalArgumentException("Unsupported subtitle format: " + name
+                + ". Use one of: " + String.join(", ", subtitleFormatNames()));
     }
 
     private Object getChannel(final Map<String, Object> arguments) throws Exception {

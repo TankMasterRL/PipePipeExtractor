@@ -26,8 +26,11 @@ Optional `--language <lang>` and `--country <country>` flags set the extractor's
 localization and content country.
 
 Tools exposed: `list_services`, `get_suggestions`, `search`, `get_stream`,
-`get_channel`, `get_channel_tab`, `get_playlist`, `get_comments`, `get_kiosk`,
-`get_feed`, and `get_more` (for paginating any result via its `nextPageToken`).
+`get_subtitles`, `get_channel`, `get_channel_tab`, `get_playlist`, `get_comments`,
+`get_kiosk`, `get_feed`, and `get_more` (for paginating any result via its
+`nextPageToken`). `get_subtitles` lists a stream's caption tracks (language,
+auto-generated or not, format) with the URL of each track's text, in WebVTT unless
+another caption format is requested; it never returns media.
 Numeric service ids and the available search content/sort filter ids come from
 `list_services`.
 
