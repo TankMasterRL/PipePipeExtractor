@@ -23,6 +23,11 @@ dependencies {
     // okhttp3.Call (the extractor's async request paths call await()/cancel() on it).
     implementation 'com.squareup.okhttp3:okhttp:5.4.0'
 
+    // :extractor compiles against org.json as compileOnly because Android ships it, but a plain
+    // JVM does not. Without it, YouTube stream extraction fails with NoClassDefFoundError
+    // (org/json/JSONException) as soon as it schedules the dislike request.
+    runtimeOnly 'org.json:json:20260522'
+
     testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'
 }
