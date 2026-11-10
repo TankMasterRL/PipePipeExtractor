@@ -61,6 +61,7 @@ Create a **PipePipe Extractor MCP API** credential:
 | Search | Get Suggestions | One item per autocomplete suggestion |
 | Stream | Get | A single item: metadata plus playable audio/video URLs |
 | Stream | Get Comments | One item per comment |
+| Stream | Get Subtitles | A single item: the stream's caption tracks, each with its language, whether it is auto-generated and the URL of its text |
 | Channel | Get | A single item: metadata plus a token per tab |
 | Channel | Get Tab Items | One item per entry of a tab |
 | Channel | Get Feed | One item per feed entry |
