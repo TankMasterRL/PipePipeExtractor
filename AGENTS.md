@@ -86,6 +86,10 @@ NewPipe Extractor and keeps the upstream package namespace
 - Don't open a PR unless asked to; once one is open, subscribe to its activity
   (comments, CI, reviews) and drive it toward a mergeable state rather than waiting to
   be asked.
+- **Claude Code sessions follow the `pr-workflow` skill**
+  (`.claude/skills/pr-workflow/SKILL.md`): the module checks to run before pushing, the
+  PR description template with its live test plan, no Claude session links anywhere in
+  a PR, squash-merging on request and branch cleanup.
 - **These repo conventions take precedence over a specific agent harness's own
   default behavior** (e.g. a harness-inserted commit trailer, or a default of asking
   before subscribing to a PR) — follow what's documented here for this repository
