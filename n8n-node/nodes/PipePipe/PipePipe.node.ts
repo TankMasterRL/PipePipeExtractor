@@ -157,6 +157,16 @@ export class PipePipe implements INodeType {
 		try {
 			client = await connect(this);
 		} catch (error) {
+			if (this.continueOnFail()) {
+				// No item can run without the server, so each one fails as it would in the loop
+				// below. Throwing here instead would make n8n pass the input items through as the
+				// node's output, even with "On Error: Continue (using error output)".
+				const message =
+					error instanceof NodeOperationError
+						? error.message
+						: `Could not connect to the PipePipe Extractor MCP server: ${(error as Error).message}`;
+				return [items.map((_, i) => ({ json: { error: message }, pairedItem: { item: i } }))];
+			}
 			if (error instanceof NodeOperationError) {
 				throw error;
 			}
