@@ -125,6 +125,9 @@ An extraction failure (an unsupported URL, an age-restricted stream, a service
 blocking the request) fails the item. Enable **Continue On Fail** on the node to emit
 `{ "error": "…" }` for the offending item and keep the workflow running.
 
+If the MCP server cannot be reached at all, every item fails the same way, so with
+**On Error: Continue (using error output)** they all leave through the error output.
+
 Streams whose comments are unsupported or disabled produce no items rather than an
 error.
 

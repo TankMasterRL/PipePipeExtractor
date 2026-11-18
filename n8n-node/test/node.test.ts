@@ -326,6 +326,66 @@ describe('PipePipe node', () => {
 		assert.equal(server.requests.filter((request) => request.method === 'DELETE').length, 1);
 	});
 
+	it('fails the workflow when the server cannot be reached', async () => {
+		await server.stop();
+
+		await assert.rejects(
+			() =>
+				run({
+					parameters: { resource: 'stream', operation: 'get', url: 'https://example.com/x' },
+				}),
+			(error: Error & { description?: string }) => {
+				assert.equal(error.name, 'NodeOperationError');
+				assert.match(String(error.description), /Could not reach the PipePipe Extractor MCP server/);
+				return true;
+			},
+		);
+	});
+
+	// n8n routes an item to the error output only when its JSON holds nothing but the error. If
+	// execute() threw instead, n8n would pass the input items through as the node's output.
+	it('fails every item when the server cannot be reached and Continue On Fail is set', async () => {
+		await server.stop();
+		const context = fakeExecuteFunctions({
+			endpoint: server.url,
+			parameters: { resource: 'stream', operation: 'get', url: 'https://example.com/x' },
+			items: [{ json: { videoId: 'a' } }, { json: { videoId: 'b' } }, { json: { videoId: 'c' } }],
+			continueOnFail: true,
+		});
+
+		const [output] = await new PipePipe().execute.call(context);
+
+		assert.equal(output.length, 3);
+		output.forEach((item, i) => {
+			assert.deepEqual(Object.keys(item.json), ['error']);
+			assert.match(
+				String(item.json.error),
+				/^Could not connect to the PipePipe Extractor MCP server: .+/,
+			);
+			assert.deepEqual(item.pairedItem, { item: i });
+		});
+	});
+
+	it('fails every item with its own message when no endpoint is configured', async () => {
+		const context = fakeExecuteFunctions({
+			endpoint: ' ',
+			parameters: { resource: 'stream', operation: 'get', url: 'https://example.com/x' },
+			items: [{ json: {} }, { json: {} }],
+			continueOnFail: true,
+		});
+
+		const [output] = await new PipePipe().execute.call(context);
+
+		assert.deepEqual(
+			output.map((item) => item.json),
+			[
+				{ error: 'No MCP endpoint is configured in the PipePipe Extractor credentials' },
+				{ error: 'No MCP endpoint is configured in the PipePipe Extractor credentials' },
+			],
+		);
+		assert.equal(server.requests.length, 0);
+	});
+
 	it('sends the access token as a bearer header when one is configured', async () => {
 		server.tool('list_services', () => toolResult({ services: [] }));
 
